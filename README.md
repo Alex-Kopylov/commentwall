@@ -8,7 +8,7 @@ the file is tokenized with the RustPython lexer rather than pattern-matched.
 
 ```console
 $ commentwall --max-lines 5 src/app.py
-src/app.py:12: standalone comment block of 9 lines exceeds max-lines 5
+src/app.py:12:1: CW001 Standalone comment block of 9 lines exceeds max-lines 5
 ```
 
 Exit code is `1` when anything is reported, `0` otherwise.
@@ -26,7 +26,7 @@ With [mise](https://mise.jdx.dev):
 
 ```toml
 [tools]
-"ubi:Alex-Kopylov/commentwall" = "0.2.0"
+"ubi:Alex-Kopylov/commentwall" = "1.0.0"
 ```
 
 Or grab an archive for your platform from
@@ -35,14 +35,28 @@ Or grab an archive for your platform from
 ## Usage
 
 ```
-commentwall [--max-lines N] <FILE>...
+commentwall [--max-lines N] [--with-prompt] <FILE>...
+commentwall --help
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--max-lines N` | `5` | Longest accepted run of consecutive comment-only lines |
+| `-p`, `--with-prompt` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
+| `-h`, `--help` | | Print help and exit; no files required |
 
 Files are checked independently; every violating block is reported.
+
+Diagnostics follow [Ruff's concise format](https://docs.astral.sh/ruff/settings/#output-prefer-rule-codes):
+`file:line:column: CODE message`. `CW001` identifies a comment block above the
+limit. Lines and columns are 1-based and point to the first `#` in the block.
+The message format is maintained in [`src/output.rs`](src/output.rs).
+
+For agent feedback, run `commentwall --with-prompt src/app.py src/other.py`.
+The exact guidance lives in [`prompts/comment-guidance.md`](prompts/comment-guidance.md)
+and is embedded at compile time; rebuild after editing it. It appears once per
+invocation, even with multiple files or blocks. Clean runs and file-read errors
+alone do not print guidance.
 
 ## As a commit hook
 
