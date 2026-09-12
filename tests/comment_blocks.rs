@@ -55,6 +55,23 @@ fn an_unclosed_bracket_at_eof_terminates() {
 }
 
 #[test]
+fn comments_before_an_unterminated_triple_string_are_reported() {
+    assert_eq!(
+        find_long_comment_blocks("# a\n# b\n\"\"\"unfinished", 1),
+        vec![(1, 2)]
+    );
+    assert_eq!(
+        find_long_comment_blocks("x = 1\n# a\n# b\n\"\"\"unfinished", 1),
+        vec![(2, 3)]
+    );
+}
+
+#[test]
+fn comments_before_a_final_line_continuation_are_reported() {
+    assert_eq!(find_long_comment_blocks("# a\n# b\n\\\n", 1), vec![(1, 2)]);
+}
+
+#[test]
 fn a_recoverable_lex_error_does_not_hide_later_runs() {
     assert_eq!(
         find_long_comment_blocks("x = 1)\n# a\n# b\n# c\n", 2),

@@ -4,18 +4,25 @@ use rustpython_parser::{Mode, Tok};
 /// Runs of standalone comments longer than `max_lines`, as (first, last) line (1-based).
 ///
 /// Recoverable lexical errors are skipped, because the lexer resyncs after them and
-/// comment walls further down the file still deserve reporting. An `Eof` error is
-/// fatal instead: on an unclosed bracket the lexer repeats it forever rather than
-/// ending the iterator, so skipping it would spin.
+/// comment walls further down the file still deserve reporting. The first `Eof`
+/// is skipped to drain queued comments. A repeated `Eof` at the same location
+/// stops iteration, since an unclosed bracket makes the lexer repeat it forever.
 pub fn find_long_comment_blocks(source: &str, max_lines: usize) -> Vec<(usize, usize)> {
     let mut violations = Vec::new();
     let mut run: Option<(usize, usize)> = None;
     let (mut cursor, mut line, mut line_start) = (0usize, 1usize, 0usize);
+    let mut eof_location = None;
 
     for item in lex(source, Mode::Module) {
         let (tok, range) = match item {
             Ok(pair) => pair,
-            Err(err) if matches!(err.error, LexicalErrorType::Eof) => break,
+            Err(err) if matches!(err.error, LexicalErrorType::Eof) => {
+                if eof_location == Some(err.location) {
+                    break;
+                }
+                eof_location = Some(err.location);
+                continue;
+            }
             Err(_) => continue,
         };
         if !matches!(tok, Tok::Comment(_)) {
