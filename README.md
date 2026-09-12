@@ -35,14 +35,14 @@ Or grab an archive for your platform from
 ## Usage
 
 ```
-commentwall [--max-lines N] [--show-guidance] <FILE>...
+commentwall [--max-lines N] [--with-prompt] <FILE>...
 commentwall --help
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--max-lines N` | `5` | Longest accepted run of consecutive comment-only lines |
-| `--show-guidance` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
+| `-p`, `--with-prompt` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
 | `-h`, `--help` | | Print help and exit; no files required |
 
 Files are checked independently; every violating block is reported.
@@ -52,7 +52,7 @@ Diagnostics follow [Ruff's concise format](https://docs.astral.sh/ruff/settings/
 limit. Lines and columns are 1-based and point to the first `#` in the block.
 The message format is maintained in [`src/output.rs`](src/output.rs).
 
-For agent feedback, run `commentwall --show-guidance src/app.py src/other.py`.
+For agent feedback, run `commentwall --with-prompt src/app.py src/other.py`.
 The exact guidance lives in [`prompts/comment-guidance.md`](prompts/comment-guidance.md)
 and is embedded at compile time; rebuild after editing it. It appears once per
 invocation, even with multiple files or blocks. Clean runs and file-read errors

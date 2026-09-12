@@ -17,16 +17,16 @@ fn guidance_is_opt_in_and_once_per_invocation() {
     let diagnostics = "one.py:2:5: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n\
 one.py:5:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n\
 two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
-    for show_guidance in [false, true] {
+    for prompt_flag in [None, Some("--with-prompt"), Some("-p")] {
         let mut command = Command::new(env!("CARGO_BIN_EXE_commentwall"));
         command.current_dir(&dir).args(["--max-lines", "1"]);
-        if show_guidance {
-            command.arg("--show-guidance");
+        if let Some(prompt_flag) = prompt_flag {
+            command.arg(prompt_flag);
         }
         let output = command.args(["one.py", "two.py"]).output().unwrap();
         assert_eq!(output.status.code(), Some(1));
         assert!(output.stderr.is_empty());
-        let expected = if show_guidance {
+        let expected = if prompt_flag.is_some() {
             format!("{diagnostics}\n{GUIDANCE}")
         } else {
             diagnostics.to_owned()
@@ -37,7 +37,7 @@ two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
     for (file, code) in [("clean.py", 0), ("missing.py", 1)] {
         let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
             .current_dir(&dir)
-            .args(["--show-guidance", file])
+            .args(["--with-prompt", file])
             .output()
             .unwrap();
         assert_eq!(output.status.code(), Some(code));
@@ -57,7 +57,7 @@ fn help_needs_no_files_and_lists_options() {
         assert!(output.status.success());
         assert!(output.stderr.is_empty());
         let help = String::from_utf8(output.stdout).unwrap();
-        for option in ["--show-guidance", "--max-lines", "--help"] {
+        for option in ["--with-prompt", "-p", "--max-lines", "--help"] {
             assert!(help.contains(option), "missing {option}: {help}");
         }
         assert!(!help.contains(GUIDANCE));

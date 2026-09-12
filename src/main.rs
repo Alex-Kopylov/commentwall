@@ -15,8 +15,8 @@ struct Cli {
     max_lines: usize,
 
     /// Print comment-writing guidance once if any comment blocks exceed the limit
-    #[arg(long)]
-    show_guidance: bool,
+    #[arg(short = 'p', long = "with-prompt")]
+    with_prompt: bool,
 
     /// Python files to check
     #[arg(value_name = "FILE", required = true)]
@@ -48,7 +48,7 @@ fn main() -> ExitCode {
         }
     }
 
-    if cli.show_guidance && has_violations {
+    if cli.with_prompt && has_violations {
         print!("\n{}", output::COMMENT_GUIDANCE);
     }
 
