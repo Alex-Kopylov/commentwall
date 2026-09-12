@@ -1,0 +1,21 @@
+[package]
+name = "commentwall"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Fail Python files that contain walls of standalone comments"
+license = "MIT"
+repository = "https://github.com/Alex-Kopylov/commentwall"
+readme = "README.md"
+keywords = ["python", "lint", "comments", "pre-commit"]
+categories = ["development-tools"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+# full-lexer is required: without it the lexer drops Tok::Comment entirely.
+rustpython-parser = { version = "0.4.0", features = ["full-lexer"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
