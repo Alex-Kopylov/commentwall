@@ -35,17 +35,25 @@ Or grab an archive for your platform from
 ## Usage
 
 ```
-commentwall [--max-lines N] [--with-prompt] <FILE>...
+commentwall [--max-lines N] [--file-timeout SECONDS] [--with-prompt] <FILE>...
 commentwall --help
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--max-lines N` | `5` | Longest accepted run of consecutive comment-only lines |
+| `--file-timeout SECONDS` | `5` | Maximum seconds per file, including reading and analysis; `0` waits indefinitely |
 | `-p`, `--with-prompt` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
 | `-h`, `--help` | | Print help and exit; no files required |
 
-Files are checked independently; every violating block is reported.
+Files are checked in parallel. One combined report is printed after every file
+finishes or times out, in command-line order. Guidance appears once at the end.
+The report goes to stdout, or entirely to stderr if any file cannot be read,
+times out, or fails to start analysis. A timeout is reported with the file path
+and exits with code `1`; results from other files are retained.
+
+For example, `commentwall --file-timeout 10 src/app.py src/other.py` allows
+10 seconds per file. Use `--file-timeout 0` to remove the limit.
 
 Diagnostics follow [Ruff's concise format](https://docs.astral.sh/ruff/settings/#output-prefer-rule-codes):
 `file:line:column: CODE message`. `CW001` identifies a comment block above the

@@ -57,9 +57,30 @@ fn help_needs_no_files_and_lists_options() {
         assert!(output.status.success());
         assert!(output.stderr.is_empty());
         let help = String::from_utf8(output.stdout).unwrap();
-        for option in ["--with-prompt", "-p", "--max-lines", "--help"] {
+        for option in [
+            "--with-prompt",
+            "-p",
+            "--max-lines",
+            "--file-timeout",
+            "--help",
+        ] {
             assert!(help.contains(option), "missing {option}: {help}");
         }
         assert!(!help.contains(GUIDANCE));
+        assert!(help.contains("0 waits indefinitely"));
+        assert!(help.contains("[default: 5]"));
+        assert!(help.contains("one report"));
+    }
+}
+
+#[test]
+fn invalid_file_timeouts_are_rejected() {
+    for value in ["-1", "1.5", "abc", "18446744073709551616"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
+            .args(["--file-timeout", value, "file.py"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
     }
 }
