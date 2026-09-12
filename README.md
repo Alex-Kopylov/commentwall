@@ -26,7 +26,7 @@ With [mise](https://mise.jdx.dev):
 
 ```toml
 [tools]
-"ubi:Alex-Kopylov/commentwall" = "0.1.0"
+"ubi:Alex-Kopylov/commentwall" = "0.2.0"
 ```
 
 Or grab an archive for your platform from
