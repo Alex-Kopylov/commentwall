@@ -35,10 +35,6 @@ delay += random.uniform(0, delay * retry_jitter)
 </tr>
 </table>
 
-The rationale isn't lost, just relocated: the ticket is the durable place
-for it, and the code keeps a one-line pointer instead of a paragraph that
-goes stale the next time the retry policy changes.
-
 Fails Python files that contain walls of standalone comments.
 
 A *wall* is a run of consecutive comment-only lines. Trailing comments
