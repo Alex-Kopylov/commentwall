@@ -2,7 +2,7 @@
 name = "commentwall"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.86"
 description = "Fail Python files that contain walls of standalone comments"
 license = "MIT"
 repository = "https://github.com/Alex-Kopylov/commentwall"
@@ -14,6 +14,17 @@ categories = ["development-tools"]
 clap = { version = "4.5", features = ["derive"] }
 # full-lexer is required: without it the lexer drops Tok::Comment entirely.
 rustpython-parser = { version = "0.4.0", features = ["full-lexer"] }
+
+[dev-dependencies]
+# No plotters, no rayon: those only feed HTML reports, which sit behind the
+# `stable` feature anyway. Results are a hand-written table in benches/README.md.
+criterion = { version = "0.8", default-features = false, features = [
+    "cargo_bench_support",
+] }
+
+[[bench]]
+name = "comment_blocks"
+harness = false
 
 [profile.release]
 strip = true
