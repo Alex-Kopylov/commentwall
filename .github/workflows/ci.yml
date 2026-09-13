@@ -26,3 +26,7 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      # Runs every benchmark once without measuring: guards against a bench
+      # that no longer builds or a fixture that no longer parses. Shared
+      # runners are too noisy to gate on timings.
+      - run: cargo bench --bench comment_blocks -- --test
