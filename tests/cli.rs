@@ -67,8 +67,12 @@ fn help_needs_no_files_and_lists_options() {
             assert!(help.contains(option), "missing {option}: {help}");
         }
         assert!(!help.contains(GUIDANCE));
-        assert!(help.contains("0 waits indefinitely"));
-        assert!(help.contains("[default: 5]"));
+        let timeout_help = help
+            .lines()
+            .find(|line| line.contains("--file-timeout"))
+            .unwrap();
+        assert!(timeout_help.contains("0 waits indefinitely"), "{help}");
+        assert!(timeout_help.contains("[default: 5]"), "{help}");
         assert!(help.contains("one report"));
     }
 }

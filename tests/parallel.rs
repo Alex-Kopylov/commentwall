@@ -37,6 +37,20 @@ impl Run {
         fs::read_to_string(self.dir.join(stream)).unwrap()
     }
 
+    fn assert_quiet_for(&mut self, duration: Duration) {
+        let started = Instant::now();
+        loop {
+            assert!(self.child.try_wait().unwrap().is_none(), "CLI exited early");
+            for stream in ["stdout", "stderr"] {
+                assert!(self.output(stream).is_empty(), "early {stream} output");
+            }
+            if started.elapsed() >= duration {
+                break;
+            }
+            sleep(Duration::from_millis(10));
+        }
+    }
+
     fn feed(&self, file: &str) {
         let mut writer = Command::new("sh")
             .args(["-c", "printf '# a\n# b\n' > \"$1\"", "sh"])
@@ -71,7 +85,7 @@ fn wait(child: &mut Child, limit: Duration) -> ExitStatus {
 }
 
 #[test]
-fn files_run_in_parallel_and_report_only_after_completion() {
+fn files_are_analyzed_in_parallel() {
     let mut run = Run::start(
         "parallel",
         &[
@@ -87,10 +101,6 @@ fn files_run_in_parallel_and_report_only_after_completion() {
     );
     // The last file must be read while the preceding file is still blocked.
     run.feed("other.py");
-    sleep(Duration::from_millis(100));
-    assert!(run.child.try_wait().unwrap().is_none());
-    assert!(run.output("stdout").is_empty());
-    assert!(run.output("stderr").is_empty());
     run.feed("slow.py");
     assert_eq!(wait(&mut run.child, Duration::from_secs(2)).code(), Some(1));
     let report = run.output("stdout");
@@ -112,7 +122,48 @@ fn files_run_in_parallel_and_report_only_after_completion() {
 }
 
 #[test]
-fn timeouts_overlap_and_preserve_other_results_in_one_report() {
+fn report_is_withheld_until_all_files_finish() {
+    let mut run = Run::start(
+        "buffering",
+        &[
+            "--file-timeout",
+            "0",
+            "--max-lines",
+            "1",
+            "wall.py",
+            "missing.py",
+            "slow.py",
+        ],
+    );
+    // Observe both streams throughout a window where one file cannot finish.
+    run.assert_quiet_for(Duration::from_millis(200));
+    run.feed("slow.py");
+    assert_eq!(wait(&mut run.child, Duration::from_secs(2)).code(), Some(1));
+    assert!(run.output("stdout").is_empty());
+    let report = run.output("stderr");
+    let lines: Vec<_> = report.lines().collect();
+    assert_eq!(lines.len(), 3, "{report}");
+    assert!(lines[0].starts_with("wall.py:1:1: CW001"));
+    assert!(lines[1].starts_with("missing.py:"));
+    assert!(lines[2].starts_with("slow.py:1:1: CW001"));
+}
+
+#[test]
+fn per_file_timeouts_overlap() {
+    let mut run = Run::start(
+        "overlapping-timeouts",
+        &["--file-timeout", "1", "slow.py", "other.py"],
+    );
+    assert_eq!(
+        wait(&mut run.child, Duration::from_millis(1800)).code(),
+        Some(1)
+    );
+    assert!(run.output("stdout").is_empty());
+    assert_eq!(run.output("stderr"), "slow.py: analysis timed out after 1 seconds\nother.py: analysis timed out after 1 seconds\n");
+}
+
+#[test]
+fn timeout_report_preserves_other_results() {
     let mut run = Run::start(
         "timeouts",
         &[
@@ -127,10 +178,7 @@ fn timeouts_overlap_and_preserve_other_results_in_one_report() {
             "missing.py",
         ],
     );
-    assert_eq!(
-        wait(&mut run.child, Duration::from_millis(1800)).code(),
-        Some(1)
-    );
+    assert_eq!(wait(&mut run.child, Duration::from_secs(3)).code(), Some(1));
     assert!(run.output("stdout").is_empty());
     let report = run.output("stderr");
     let lines: Vec<_> = report.lines().take(4).collect();
@@ -147,23 +195,26 @@ fn timeouts_overlap_and_preserve_other_results_in_one_report() {
 }
 
 #[test]
-fn default_timeout_is_five_seconds_and_zero_disables_it() {
-    let started = Instant::now();
+fn default_timeout_is_five_seconds() {
     let mut default = Run::start("default", &["-p", "slow.py"]);
-    let mut unlimited = Run::start("unlimited", &["--file-timeout", "0", "slow.py"]);
+    let started = Instant::now();
     assert_eq!(
         wait(&mut default.child, Duration::from_secs(7)).code(),
         Some(1)
     );
-    assert!(started.elapsed() >= Duration::from_secs(5));
+    // Allow scheduling around process creation without accepting a shorter timeout.
+    assert!(started.elapsed() >= Duration::from_millis(4800));
     assert!(default.output("stdout").is_empty());
     assert_eq!(
         default.output("stderr"),
         "slow.py: analysis timed out after 5 seconds\n"
     );
-    // Give the unlimited invocation more than its own default five-second window.
-    sleep(Duration::from_millis(200));
-    assert!(unlimited.child.try_wait().unwrap().is_none());
+}
+
+#[test]
+fn zero_timeout_waits_beyond_the_default_limit() {
+    let mut unlimited = Run::start("unlimited", &["--file-timeout", "0", "slow.py"]);
+    unlimited.assert_quiet_for(Duration::from_millis(5200));
     unlimited.feed("slow.py");
     assert!(wait(&mut unlimited.child, Duration::from_secs(2)).success());
     assert!(unlimited.output("stdout").is_empty());
