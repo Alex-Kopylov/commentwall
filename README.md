@@ -26,7 +26,8 @@ delay += random.uniform(0, delay * retry_jitter)
 <td>
 
 ```python
-# Avoids retry synchronization that would spike load.
+# Avoids retry synchronization
+# that would spike load.
 delay = base_delay * (2 ** attempt)
 delay += random.uniform(0, delay * retry_jitter)
 ```
