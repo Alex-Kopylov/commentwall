@@ -1,5 +1,49 @@
 # commentwall
 
+<table>
+<tr><th>BEFORE</th><th>AFTER</th></tr>
+<tr>
+<td>
+
+```python
+# Retry window correction — see
+# NET-RETRY-017.
+#
+# The retry scheduler uses exponential
+# backoff, which is mathematically
+# correct but can cause many workers
+# that failed at roughly the same time
+# to retry together. In practice this
+# creates short request spikes and can
+# make an already overloaded service
+# worse.
+#
+# Add a small random offset to each
+# delay so retries are spread across
+# the window instead of clustering
+# around the same timestamps.
+#
+# Revisit this if the backoff strategy,
+# worker count, timeout policy, or
+# upstream rate limits change.
+delay = base_delay * (2 ** attempt)
+delay += random.uniform(0, delay * retry_jitter)
+```
+
+</td>
+<td>
+
+```python
+# Avoids retry synchronization
+# that would spike load.
+delay = base_delay * (2 ** attempt)
+delay += random.uniform(0, delay * retry_jitter)
+```
+
+</td>
+</tr>
+</table>
+
 Fails Python files that contain walls of standalone comments.
 
 A *wall* is a run of consecutive comment-only lines. Trailing comments
