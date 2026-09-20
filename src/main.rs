@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use commentwall::find_long_comment_blocks;
 
-mod output;
+const COMMENT_GUIDANCE: &str = include_str!("../prompts/comment-guidance.md");
 
 /// Fail Python files that contain walls of standalone comments.
 #[derive(Parser)]
@@ -39,9 +39,19 @@ fn main() -> ExitCode {
         };
 
         for (first, last) in find_long_comment_blocks(&source, cli.max_lines) {
+            let column = source
+                .lines()
+                .nth(first - 1)
+                .unwrap_or_default()
+                .chars()
+                .take_while(|&ch| ch != '#')
+                .count()
+                + 1;
             println!(
-                "{}",
-                output::diagnostic(path, &source, first, last, cli.max_lines)
+                "{}:{first}:{column}: CW001 Standalone comment block of {} lines exceeds max-lines {}",
+                path.display(),
+                last - first + 1,
+                cli.max_lines,
             );
             failed = true;
             has_violations = true;
@@ -49,7 +59,7 @@ fn main() -> ExitCode {
     }
 
     if cli.with_prompt && has_violations {
-        print!("\n{}", output::COMMENT_GUIDANCE);
+        print!("\n{COMMENT_GUIDANCE}");
     }
 
     if failed {

@@ -10,7 +10,7 @@ use rustpython_parser::{Mode, Tok};
 pub fn find_long_comment_blocks(source: &str, max_lines: usize) -> Vec<(usize, usize)> {
     let mut violations = Vec::new();
     let mut run: Option<(usize, usize)> = None;
-    let (mut cursor, mut line, mut line_start) = (0usize, 1usize, 0usize);
+    let (mut cursor, mut line) = (0usize, 1usize);
     let mut eof_location = None;
 
     for item in lex(source, Mode::Module) {
@@ -31,15 +31,11 @@ pub fn find_long_comment_blocks(source: &str, max_lines: usize) -> Vec<(usize, u
         let offset = usize::from(range.start());
 
         // Comments arrive in source order, so the line counter only moves forward.
-        for (i, byte) in source.as_bytes()[cursor..offset].iter().enumerate() {
-            if *byte == b'\n' {
-                line += 1;
-                line_start = cursor + i + 1;
-            }
-        }
+        line += source[cursor..offset].matches('\n').count();
         cursor = offset;
 
         // standalone only: nothing but whitespace before the #
+        let line_start = source[..offset].rfind('\n').map_or(0, |i| i + 1);
         if !source[line_start..offset].trim().is_empty() {
             continue;
         }
