@@ -13,7 +13,12 @@ categories = ["development-tools"]
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 # full-lexer is required: without it the lexer drops Tok::Comment entirely.
-rustpython-parser = { version = "0.4.0", features = ["full-lexer"] }
+# Defaults are off to keep the malachite bignum tree out; a bigint backend is
+# still mandatory to compile the AST, and num-bigint is the smaller one.
+rustpython-parser = { version = "0.4.0", default-features = false, features = [
+    "full-lexer",
+    "num-bigint",
+] }
 
 [profile.release]
 strip = true
