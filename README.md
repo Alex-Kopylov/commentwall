@@ -111,6 +111,9 @@ repos:
         types: [python]
 ```
 
+For a hard ceiling on a pathological file, wrap the entry:
+`entry: timeout 10 commentwall --max-lines 5`.
+
 ## License
 
 MIT
