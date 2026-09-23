@@ -70,7 +70,7 @@ With [mise](https://mise.jdx.dev):
 
 ```toml
 [tools]
-"ubi:Alex-Kopylov/commentwall" = "1.0.0"
+"ubi:Alex-Kopylov/commentwall" = "latest"
 ```
 
 Or grab an archive for your platform from
