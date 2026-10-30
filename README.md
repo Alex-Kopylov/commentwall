@@ -96,6 +96,35 @@ limit. Lines and columns are 1-based and point to the first `#` in the block.
 The `--with-prompt` text lives in [`prompts/comment-guidance.md`](prompts/comment-guidance.md)
 and is embedded at compile time; rebuild after editing it.
 
+## With a coding agent
+
+Four ways to use it, from cheapest to most thorough.
+
+**Linter only.** The command above, in CI or a commit hook. Nothing touches
+the code; the agent sees the failure and deals with it.
+
+**Light formatter.** Tell the agent to run `commentwall --with-prompt` on the
+files it changed. The diagnostics come with
+[`prompts/comment-guidance.md`](prompts/comment-guidance.md), and the agent
+rewrites each flagged block in place. No subagent, no git archaeology.
+
+**No-comments mode.** Copy [`.claude/agents/comment-sicko.md`](.claude/agents/comment-sicko.md)
+and [`.claude/skills/no-comments/SKILL.md`](.claude/skills/no-comments/SKILL.md)
+into your project's `.claude/` and run `/no-comments`. The skill spawns the
+Comment Sicko agent over the current diff against `main`, working tree
+included. Every comment in that diff dies unless it is a license header, a
+public API doc comment, a link to an issue or RFC, or a quirk forced by code
+we cannot change. Anything else that looks load-bearing gets a `MUST KILL`
+flag on the guilty symbol instead of a comment. The skill then fixes the
+accepted flags. One pass per invocation, not one per comment.
+
+**No-comments mode on the linter.** `/no-comments lint`. Same agent, but the
+skill runs `commentwall` first and hands it only the flagged blocks. Pass
+files to narrow further: `/no-comments lint src/app.py`.
+
+Both agent files are adapted from Cursor's `pstack` plugin, see
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## As a commit hook
 
 With [prek](https://github.com/j178/prek) or pre-commit:
