@@ -1,6 +1,6 @@
 ---
 name: no-comments
-description: "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints."
+description: "Use whenever the user wants comments removed, stripped, or cleaned up in files or a diff, or when a commentwall report hands off to no-comments. Spawns Comment Sicko, fixes accepted findings, and offers encodings for claimed constraints."
 argument-hint: "[files, diff, or commentwall report]"
 ---
 
