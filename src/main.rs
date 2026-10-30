@@ -4,24 +4,21 @@ use std::process::ExitCode;
 use clap::Parser;
 use commentwall::find_long_comment_blocks;
 
-const COMMENT_GUIDANCE: &str = include_str!("../prompts/comment-guidance.md");
-const NO_COMMENTS: &str = include_str!("../prompts/no-comments.md");
-
 /// Fail Python files that contain walls of standalone comments.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// Longest run of consecutive standalone comment lines that is accepted
-    #[arg(long, default_value_t = 5, value_name = "N")]
-    max_lines: usize,
+    /// Longest run of consecutive standalone comment lines that is accepted [default: 5, or 0 with --remove]
+    #[arg(long, value_name = "N", default_value_if("remove", "true", "0"))]
+    max_lines: Option<usize>,
 
-    /// Print comment-writing guidance once if any comment blocks exceed the limit
-    #[arg(short = 'p', long = "with-prompt")]
-    with_prompt: bool,
+    /// Hand the report to the format-comments skill (for hooks run under a coding agent)
+    #[arg(long)]
+    format: bool,
 
-    /// Print a hand-off to the no-comments skill once if any comment blocks exceed the limit
-    #[arg(long = "no-comments", conflicts_with = "with_prompt")]
-    no_comments: bool,
+    /// Hand the report to the no-comments skill (for hooks run under a coding agent)
+    #[arg(long, conflicts_with = "format")]
+    remove: bool,
 
     /// Python files to check
     #[arg(value_name = "FILE", required = true)]
@@ -30,6 +27,7 @@ struct Cli {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    let max_lines = cli.max_lines.unwrap_or(5);
     let mut failed = false;
     let mut has_violations = false;
 
@@ -43,7 +41,7 @@ fn main() -> ExitCode {
             }
         };
 
-        for (first, last) in find_long_comment_blocks(&source, cli.max_lines) {
+        for (first, last) in find_long_comment_blocks(&source, max_lines) {
             let column = source
                 .lines()
                 .nth(first - 1)
@@ -56,7 +54,7 @@ fn main() -> ExitCode {
                 "{}:{first}:{column}: CW001 Standalone comment block of {} lines exceeds max-lines {}",
                 path.display(),
                 last - first + 1,
-                cli.max_lines,
+                max_lines,
             );
             failed = true;
             has_violations = true;
@@ -64,10 +62,16 @@ fn main() -> ExitCode {
     }
 
     if has_violations {
-        if cli.with_prompt {
-            print!("\n{COMMENT_GUIDANCE}");
-        } else if cli.no_comments {
-            print!("\n{NO_COMMENTS}");
+        let skill = match (cli.format, cli.remove) {
+            (true, _) => Some("format-comments"),
+            (_, true) => Some("no-comments"),
+            _ => None,
+        };
+        if let Some(skill) = skill {
+            println!(
+                "\nRun the `{skill}` skill with the report above as its scope. The flagged\n\
+blocks are the whole scope. Leave every other comment alone."
+            );
         }
     }
 

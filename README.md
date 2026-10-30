@@ -79,49 +79,21 @@ Or grab an archive for your platform from
 ## Usage
 
 ```
-commentwall [--max-lines N] [--with-prompt] <FILE>...
-commentwall --help
+commentwall [--max-lines N] [--format | --remove] <FILE>...
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--max-lines N` | `5` | Longest accepted run of consecutive comment-only lines |
-| `-p`, `--with-prompt` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
-| `--no-comments` | off | Print a hand-off to the `/no-comments` skill once after all diagnostics, only if violations occur |
-| `-h`, `--help` | | Print help and exit; no files required |
+| `--max-lines N` | `5`, or `0` with `--remove` | Longest accepted run of consecutive comment-only lines |
+| `--format` | off | After the report, hand the flagged blocks to the `format-comments` skill |
+| `--remove` | off | After the report, hand the flagged blocks to the `no-comments` skill |
 
 Diagnostics follow [Ruff's concise format](https://docs.astral.sh/ruff/settings/#output-prefer-rule-codes):
 `file:line:column: CODE message`. `CW001` identifies a comment block above the
 limit. Lines and columns are 1-based and point to the first `#` in the block.
 
-The `--with-prompt` and `--no-comments` texts live in
-[`prompts/`](prompts/) and are embedded at compile time; rebuild after editing them.
-
-## With a coding agent
-
-Four ways to use it, from cheapest to most thorough.
-
-**Linter only.** The command above, in CI or a commit hook. Nothing touches
-the code.
-
-**AI formatter.** The agent runs `commentwall --with-prompt` on the files it
-changed. The diagnostics come with
-[`prompts/comment-guidance.md`](prompts/comment-guidance.md), and the agent
-rewrites each flagged block in place.
-
-**No-comments mode.** A port of the `/no-comments` skill from Cursor's
-`pstack` plugin (MIT, see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)).
-Copy [`.claude/agents/comment-sicko.md`](.claude/agents/comment-sicko.md) and
-[`.claude/skills/no-comments/SKILL.md`](.claude/skills/no-comments/SKILL.md)
-into your project's `.claude/` and run `/no-comments`. It spawns the Comment
-Sicko agent over the current diff against `main`. Every comment dies unless it
-is a license header, a public API doc, an issue link, or a quirk forced by
-code we cannot change. Load-bearing prose becomes a `MUST KILL` flag on the
-symbol, and the skill fixes the accepted flags.
-
-**No-comments mode on the linter.** `commentwall --no-comments <FILE>...`.
-The report is followed by a hand-off, and the agent runs `/no-comments` with
-the whole report as its scope. Only the flagged blocks are touched.
+`--format` and `--remove` are for hooks that run under a coding agent. Run by
+hand, they only append one sentence addressed to an agent.
 
 ## As a commit hook
 
@@ -133,13 +105,59 @@ repos:
     hooks:
       - id: commentwall
         name: commentwall (comment blocks)
-        entry: commentwall --max-lines 5
+        entry: commentwall --format
         language: system
         types: [python]
 ```
 
-For a hard ceiling on a pathological file, wrap the entry:
-`entry: timeout 10 commentwall --max-lines 5`.
+Without a flag it is a plain linter: the commit fails, nothing touches the
+code. For a hard ceiling on a pathological file: `entry: timeout 10 commentwall --format`.
+
+## With a coding agent
+
+The agent commits. On a violation the hook fails with the report and one
+sentence:
+
+```
+src/app.py:12:1: CW001 Standalone comment block of 9 lines exceeds max-lines 5
+
+Run the `format-comments` skill with the report above as its scope. The flagged
+blocks are the whole scope. Leave every other comment alone.
+```
+
+The agent runs the named skill on those blocks and commits again. A clean
+commit prints nothing. The sentence has no `/` or `$`, so one hook serves
+Claude Code and Codex. If the agent ignores it, add to `CLAUDE.md` or
+`AGENTS.md`: *when a commit hook fails with a commentwall report, run the
+skill it names.*
+
+Copy the skills into your project. Claude Code:
+
+- [`.claude/skills/format-comments/SKILL.md`](.claude/skills/format-comments/SKILL.md)
+- [`.claude/skills/no-comments/SKILL.md`](.claude/skills/no-comments/SKILL.md)
+- [`.claude/agents/comment-sicko.md`](.claude/agents/comment-sicko.md)
+
+Codex:
+
+- [`.agents/skills/format-comments/SKILL.md`](.agents/skills/format-comments/SKILL.md)
+- [`.agents/skills/no-comments/SKILL.md`](.agents/skills/no-comments/SKILL.md)
+- [`.codex/agents/comment-sicko.toml`](.codex/agents/comment-sicko.toml)
+
+**`--format`** → `format-comments`: each flagged block becomes the shortest
+comment that states the non-obvious why, or is deleted if it only restates the
+code. The BEFORE/AFTER at the top.
+
+**`--remove`** → `no-comments`: a port of the `/no-comments` skill from
+Cursor's `pstack` plugin (MIT, see
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)). It spawns the Comment
+Sicko agent. Every comment dies unless it is a license header, a public API
+doc, an issue link, or a quirk forced by code we cannot change. Load-bearing
+prose becomes a `MUST KILL` flag on the symbol, which the skill then fixes.
+With `--remove` the limit defaults to `0`, so every standalone comment is
+flagged.
+
+Both skills also run on their own over files, a diff, or a pasted report;
+with no argument they take the diff against `main`.
 
 ## License
 

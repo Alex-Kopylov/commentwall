@@ -1,10 +1,14 @@
 use std::process::Command;
 
-const GUIDANCE: &str = include_str!("../prompts/comment-guidance.md");
-const NO_COMMENTS: &str = include_str!("../prompts/no-comments.md");
+fn hand_off(skill: &str) -> String {
+    format!(
+        "Run the `{skill}` skill with the report above as its scope. The flagged\n\
+blocks are the whole scope. Leave every other comment alone.\n"
+    )
+}
 
 #[test]
-fn guidance_is_opt_in_and_once_per_invocation() {
+fn hand_off_is_opt_in_and_once_per_invocation() {
     let dir = std::env::temp_dir().join(format!("commentwall-cli-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
@@ -19,10 +23,9 @@ fn guidance_is_opt_in_and_once_per_invocation() {
 one.py:5:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n\
 two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
     for (prompt_flag, tail) in [
-        (None, ""),
-        (Some("--with-prompt"), GUIDANCE),
-        (Some("-p"), GUIDANCE),
-        (Some("--no-comments"), NO_COMMENTS),
+        (None, String::new()),
+        (Some("--format"), hand_off("format-comments")),
+        (Some("--remove"), hand_off("no-comments")),
     ] {
         let mut command = Command::new(env!("CARGO_BIN_EXE_commentwall"));
         command.current_dir(&dir).args(["--max-lines", "1"]);
@@ -42,15 +45,25 @@ two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
 
     let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
         .current_dir(&dir)
-        .args(["--with-prompt", "--no-comments", "one.py"])
+        .args(["--format", "--remove", "one.py"])
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
 
+    let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
+        .current_dir(&dir)
+        .args(["--remove", "two.py"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8(output.stdout)
+        .unwrap()
+        .starts_with("two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 0\n"));
+
     for (file, code) in [("clean.py", 0), ("missing.py", 1)] {
         let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
             .current_dir(&dir)
-            .args(["--with-prompt", file])
+            .args(["--format", file])
             .output()
             .unwrap();
         assert_eq!(output.status.code(), Some(code));
@@ -70,15 +83,9 @@ fn help_needs_no_files_and_lists_options() {
         assert!(output.status.success());
         assert!(output.stderr.is_empty());
         let help = String::from_utf8(output.stdout).unwrap();
-        for option in [
-            "--with-prompt",
-            "-p",
-            "--no-comments",
-            "--max-lines",
-            "--help",
-        ] {
+        for option in ["--format", "--remove", "--max-lines", "--help"] {
             assert!(help.contains(option), "missing {option}: {help}");
         }
-        assert!(!help.contains(GUIDANCE));
+        assert!(!help.contains("Run the"));
     }
 }
