@@ -1,6 +1,7 @@
 use std::process::Command;
 
 const GUIDANCE: &str = include_str!("../prompts/comment-guidance.md");
+const NO_COMMENTS: &str = include_str!("../prompts/no-comments.md");
 
 #[test]
 fn guidance_is_opt_in_and_once_per_invocation() {
@@ -17,7 +18,12 @@ fn guidance_is_opt_in_and_once_per_invocation() {
     let diagnostics = "one.py:2:5: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n\
 one.py:5:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n\
 two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
-    for prompt_flag in [None, Some("--with-prompt"), Some("-p")] {
+    for (prompt_flag, tail) in [
+        (None, ""),
+        (Some("--with-prompt"), GUIDANCE),
+        (Some("-p"), GUIDANCE),
+        (Some("--no-comments"), NO_COMMENTS),
+    ] {
         let mut command = Command::new(env!("CARGO_BIN_EXE_commentwall"));
         command.current_dir(&dir).args(["--max-lines", "1"]);
         if let Some(prompt_flag) = prompt_flag {
@@ -27,12 +33,19 @@ two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
         assert_eq!(output.status.code(), Some(1));
         assert!(output.stderr.is_empty());
         let expected = if prompt_flag.is_some() {
-            format!("{diagnostics}\n{GUIDANCE}")
+            format!("{diagnostics}\n{tail}")
         } else {
             diagnostics.to_owned()
         };
         assert_eq!(String::from_utf8(output.stdout).unwrap(), expected);
     }
+
+    let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
+        .current_dir(&dir)
+        .args(["--with-prompt", "--no-comments", "one.py"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
 
     for (file, code) in [("clean.py", 0), ("missing.py", 1)] {
         let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
@@ -57,7 +70,13 @@ fn help_needs_no_files_and_lists_options() {
         assert!(output.status.success());
         assert!(output.stderr.is_empty());
         let help = String::from_utf8(output.stdout).unwrap();
-        for option in ["--with-prompt", "-p", "--max-lines", "--help"] {
+        for option in [
+            "--with-prompt",
+            "-p",
+            "--no-comments",
+            "--max-lines",
+            "--help",
+        ] {
             assert!(help.contains(option), "missing {option}: {help}");
         }
         assert!(!help.contains(GUIDANCE));
