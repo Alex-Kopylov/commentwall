@@ -56,9 +56,9 @@ two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 1\n";
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(1));
-    assert!(String::from_utf8(output.stdout)
-        .unwrap()
-        .starts_with("two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 0\n"));
+    assert!(String::from_utf8(output.stdout).unwrap().starts_with(
+        "two.py:1:1: CW001 Standalone comment block of 2 lines exceeds max-lines 0\n"
+    ));
 
     for (file, code) in [("clean.py", 0), ("missing.py", 1)] {
         let output = Command::new(env!("CARGO_BIN_EXE_commentwall"))
