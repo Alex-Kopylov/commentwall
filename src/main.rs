@@ -5,6 +5,7 @@ use clap::Parser;
 use commentwall::find_long_comment_blocks;
 
 const COMMENT_GUIDANCE: &str = include_str!("../prompts/comment-guidance.md");
+const NO_COMMENTS: &str = include_str!("../prompts/no-comments.md");
 
 /// Fail Python files that contain walls of standalone comments.
 #[derive(Parser)]
@@ -17,6 +18,10 @@ struct Cli {
     /// Print comment-writing guidance once if any comment blocks exceed the limit
     #[arg(short = 'p', long = "with-prompt")]
     with_prompt: bool,
+
+    /// Print a hand-off to the no-comments skill once if any comment blocks exceed the limit
+    #[arg(long = "no-comments", conflicts_with = "with_prompt")]
+    no_comments: bool,
 
     /// Python files to check
     #[arg(value_name = "FILE", required = true)]
@@ -58,8 +63,12 @@ fn main() -> ExitCode {
         }
     }
 
-    if cli.with_prompt && has_violations {
-        print!("\n{COMMENT_GUIDANCE}");
+    if has_violations {
+        if cli.with_prompt {
+            print!("\n{COMMENT_GUIDANCE}");
+        } else if cli.no_comments {
+            print!("\n{NO_COMMENTS}");
+        }
     }
 
     if failed {

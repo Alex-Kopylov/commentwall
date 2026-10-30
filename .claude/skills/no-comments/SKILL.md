@@ -1,8 +1,7 @@
 ---
 name: no-comments
 description: "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints."
-disable-model-invocation: true
-argument-hint: "[lint] [files or diff]"
+argument-hint: "[files, diff, or commentwall report]"
 ---
 
 # No comments
@@ -13,9 +12,7 @@ Defer to Comment Sicko's fresh perspective.
 
 ## Scope
 
-`$ARGUMENTS` may name files, a diff, or `lint`. Otherwise use the current diff against the base branch, default `main`, including the working tree.
-
-With `lint`, first run `commentwall --max-lines 5` on the Python files in scope and pass Comment Sicko only the flagged blocks (`file:line:column: CW001 ...`). The rest of the file is out of scope.
+`$ARGUMENTS` may name files, a diff, or a `commentwall` report (`file:line:column: CW001 ...`). With a report, only the flagged blocks are in scope. Otherwise use the current diff against the base branch, default `main`, including the working tree.
 
 ## Steps
 

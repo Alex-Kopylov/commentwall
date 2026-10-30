@@ -87,43 +87,41 @@ commentwall --help
 | --- | --- | --- |
 | `--max-lines N` | `5` | Longest accepted run of consecutive comment-only lines |
 | `-p`, `--with-prompt` | off | Print comment-writing guidance once after all diagnostics, only if violations occur |
+| `--no-comments` | off | Print a hand-off to the `/no-comments` skill once after all diagnostics, only if violations occur |
 | `-h`, `--help` | | Print help and exit; no files required |
 
 Diagnostics follow [Ruff's concise format](https://docs.astral.sh/ruff/settings/#output-prefer-rule-codes):
 `file:line:column: CODE message`. `CW001` identifies a comment block above the
 limit. Lines and columns are 1-based and point to the first `#` in the block.
 
-The `--with-prompt` text lives in [`prompts/comment-guidance.md`](prompts/comment-guidance.md)
-and is embedded at compile time; rebuild after editing it.
+The `--with-prompt` and `--no-comments` texts live in
+[`prompts/`](prompts/) and are embedded at compile time; rebuild after editing them.
 
 ## With a coding agent
 
 Four ways to use it, from cheapest to most thorough.
 
 **Linter only.** The command above, in CI or a commit hook. Nothing touches
-the code; the agent sees the failure and deals with it.
+the code.
 
-**Light formatter.** Tell the agent to run `commentwall --with-prompt` on the
-files it changed. The diagnostics come with
+**AI formatter.** The agent runs `commentwall --with-prompt` on the files it
+changed. The diagnostics come with
 [`prompts/comment-guidance.md`](prompts/comment-guidance.md), and the agent
-rewrites each flagged block in place. No subagent, no git archaeology.
+rewrites each flagged block in place.
 
-**No-comments mode.** Copy [`.claude/agents/comment-sicko.md`](.claude/agents/comment-sicko.md)
-and [`.claude/skills/no-comments/SKILL.md`](.claude/skills/no-comments/SKILL.md)
-into your project's `.claude/` and run `/no-comments`. The skill spawns the
-Comment Sicko agent over the current diff against `main`, working tree
-included. Every comment in that diff dies unless it is a license header, a
-public API doc comment, a link to an issue or RFC, or a quirk forced by code
-we cannot change. Anything else that looks load-bearing gets a `MUST KILL`
-flag on the guilty symbol instead of a comment. The skill then fixes the
-accepted flags. One pass per invocation, not one per comment.
+**No-comments mode.** A port of the `/no-comments` skill from Cursor's
+`pstack` plugin (MIT, see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)).
+Copy [`.claude/agents/comment-sicko.md`](.claude/agents/comment-sicko.md) and
+[`.claude/skills/no-comments/SKILL.md`](.claude/skills/no-comments/SKILL.md)
+into your project's `.claude/` and run `/no-comments`. It spawns the Comment
+Sicko agent over the current diff against `main`. Every comment dies unless it
+is a license header, a public API doc, an issue link, or a quirk forced by
+code we cannot change. Load-bearing prose becomes a `MUST KILL` flag on the
+symbol, and the skill fixes the accepted flags.
 
-**No-comments mode on the linter.** `/no-comments lint`. Same agent, but the
-skill runs `commentwall` first and hands it only the flagged blocks. Pass
-files to narrow further: `/no-comments lint src/app.py`.
-
-Both agent files are adapted from Cursor's `pstack` plugin, see
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+**No-comments mode on the linter.** `commentwall --no-comments <FILE>...`.
+The report is followed by a hand-off, and the agent runs `/no-comments` with
+the whole report as its scope. Only the flagged blocks are touched.
 
 ## As a commit hook
 
